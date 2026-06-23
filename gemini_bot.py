@@ -1,16 +1,16 @@
 import logging
 import base64
-from mistralai.client import MistralClient as Mistral
+from groq import Groq
 from tavily import TavilyClient
 from telegram import Update
 from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, filters, ContextTypes
 
 TELEGRAM_TOKEN = "8891516903:AAGRLtLPWbFvPEP1Z0VDnFxK9U2xzKw6JXA"
-MISTRAL_API_KEY = "OBeCBF3oK7f1yeMWpPbuipDyPAiQT6zG"
+GROQ_API_KEY = "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"
 TAVILY_API_KEY = "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"
 ADMIN_ID = 5205782372
 
-mistral_client = Mistral(api_key=MISTRAL_API_KEY)
+groq_client = Groq(api_key=GROQ_API_KEY)
 tavily_client = TavilyClient(api_key=TAVILY_API_KEY)
 
 logging.basicConfig(format="%(asctime)s - %(levelname)s - %(message)s", level=logging.INFO)
@@ -33,7 +33,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if user_id not in allowed_users:
         await update.message.reply_text(f"⛔ У вас нет доступа.\n\nВаш ID: {user_id}")
         return
-    await update.message.reply_text("👋 Привет! Я ИИ-ассистент на базе Mistral с поиском в интернете!\n\n/clear — очистить историю")
+    await update.message.reply_text("👋 Привет! Я ИИ-ассистент с поиском в интернете!\n\n/clear — очистить историю")
 
 async def clear(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
@@ -77,15 +77,16 @@ async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
     image_base64 = base64.b64encode(image_bytes).decode("utf-8")
     caption = update.message.caption or "Опиши что на этом фото подробно на русском языке."
     try:
-        response = mistral_client.chat.complete(
-            model="pixtral-12b-2409",
+        response = groq_client.chat.completions.create(
+            model="meta-llama/llama-4-scout-17b-16e-instruct",
             messages=[{
                 "role": "user",
                 "content": [
                     {"type": "text", "text": caption},
                     {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{image_base64}"}}
                 ]
-            }]
+            }],
+            max_tokens=1024
         )
         await update.message.reply_text(response.choices[0].message.content)
     except Exception as e:
@@ -115,9 +116,10 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_histories[user_id].append({"role": "user", "content": user_text + search_context})
 
     try:
-        response = mistral_client.chat.complete(
-            model="mistral-large-latest",
-            messages=chat_histories[user_id]
+        response = groq_client.chat.completions.create(
+            model="meta-llama/llama-4-scout-17b-16e-instruct",
+            messages=chat_histories[user_id],
+            max_tokens=1024
         )
         reply = response.choices[0].message.content
         chat_histories[user_id].append({"role": "assistant", "content": reply})
