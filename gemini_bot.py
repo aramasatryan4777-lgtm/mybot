@@ -1,6 +1,6 @@
 import logging
 import base64
-from mistralai import Mistral
+from mistralai.client import MistralClient as Mistral
 from tavily import TavilyClient
 from telegram import Update
 from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, filters, ContextTypes
