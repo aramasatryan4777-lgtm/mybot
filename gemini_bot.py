@@ -107,7 +107,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await context.bot.send_chat_action(chat_id=update.effective_chat.id, action="typing")
 
     if user_id not in chat_histories:
-        chat_histories[user_id] = [{"role": "system", "content": "Ты полезный ИИ-ассистент. Отвечай на русском языке. Если тебе дают результаты поиска — используй их для актуального ответа."}]
+        chat_histories[user_id] = [{"role": "system", "content": "Ты полезный ИИ-ассистент. Отвечай на русском языке. Никогда не используй LaTeX, формулы в скобках или символы типа $, \, ^. Пиши математику простым текстом, например: x = (11 + 15.3) / 2 = 13.15. Если тебе дают результаты поиска — используй их для актуального ответа."}]
 
     search_context = ""
     if needs_search(user_text):
