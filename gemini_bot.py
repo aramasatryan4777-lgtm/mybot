@@ -1,4 +1,6 @@
 import logging
+import json
+import os
 from groq import Groq
 from tavily import TavilyClient
 from telegram import Update
@@ -7,6 +9,7 @@ from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, fil
 TELEGRAM_TOKEN = "8891516903:AAGRLtLPWbFvPEP1Z0VDnFxK9U2xzKw6JXA"
 GROQ_API_KEY = "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"
 TAVILY_API_KEY = "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"
+ADMIN_ID = 5205782372
 
 groq_client = Groq(api_key=GROQ_API_KEY)
 tavily_client = TavilyClient(api_key=TAVILY_API_KEY)
@@ -14,20 +17,66 @@ tavily_client = TavilyClient(api_key=TAVILY_API_KEY)
 logging.basicConfig(format="%(asctime)s - %(levelname)s - %(message)s", level=logging.INFO)
 
 chat_histories = {}
+allowed_users = {ADMIN_ID}
 
 def needs_search(text):
-    keywords = ["сейчас", "сегодня", "новости", "последн", "актуальн", "2024", "2025", "2026", "курс", "погода", "цена", "когда", "кто выиграл", "что случилось"]
+    keywords = [
+        "сейчас", "сегодня", "вчера", "новости", "последн", "актуальн",
+        "2025", "2026", "курс", "погода", "цена", "стоимость", "когда",
+        "кто выиграл", "что случилось", "евро", "доллар", "рубль", "биткоин",
+        "матч", "счёт", "результат", "вышел", "вышла", "выборы", "война",
+        "произошло", "случилось", "где", "сколько стоит"
+    ]
     return any(k in text.lower() for k in keywords)
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("👋 Привет! Я ИИ-ассистент с поиском в интернете.\nМогу отвечать на актуальные вопросы!\n\n/clear — очистить историю")
+    user_id = update.effective_user.id
+    if user_id not in allowed_users:
+        await update.message.reply_text("⛔ У вас нет доступа к этому боту.")
+        return
+    await update.message.reply_text("👋 Привет! Я ИИ-ассистент с поиском в интернете.\n\n/clear — очистить историю")
 
 async def clear(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    chat_histories.pop(update.effective_user.id, None)
+    user_id = update.effective_user.id
+    if user_id not in allowed_users:
+        await update.message.reply_text("⛔ У вас нет доступа.")
+        return
+    chat_histories.pop(user_id, None)
     await update.message.reply_text("🗑️ История очищена!")
+
+async def add_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if update.effective_user.id != ADMIN_ID:
+        await update.message.reply_text("⛔ Только администратор может добавлять пользователей.")
+        return
+    if not context.args:
+        await update.message.reply_text("Использование: /add 123456789")
+        return
+    new_id = int(context.args[0])
+    allowed_users.add(new_id)
+    await update.message.reply_text(f"✅ Пользователь {new_id} добавлен!")
+
+async def remove_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if update.effective_user.id != ADMIN_ID:
+        await update.message.reply_text("⛔ Только администратор может удалять пользователей.")
+        return
+    if not context.args:
+        await update.message.reply_text("Использование: /remove 123456789")
+        return
+    rem_id = int(context.args[0])
+    allowed_users.discard(rem_id)
+    await update.message.reply_text(f"✅ Пользователь {rem_id} удалён!")
+
+async def users(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if update.effective_user.id != ADMIN_ID:
+        await update.message.reply_text("⛔ Только администратор.")
+        return
+    await update.message.reply_text(f"👥 Пользователи: {allowed_users}")
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
+    if user_id not in allowed_users:
+        await update.message.reply_text("⛔ У вас нет доступа к этому боту.")
+        return
     user_text = update.message.text
     await context.bot.send_chat_action(chat_id=update.effective_chat.id, action="typing")
 
@@ -40,7 +89,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             results = tavily_client.search(user_text, max_results=3)
             search_context = "\n\nРезультаты поиска:\n"
             for r in results["results"]:
-                search_context += f"- {r['title']}: {r['content'][:200]}\n"
+                search_context += f"- {r['title']}: {r['content'][:300]}\n"
         except:
             pass
 
@@ -63,6 +112,9 @@ def main():
     app = ApplicationBuilder().token(TELEGRAM_TOKEN).build()
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("clear", clear))
+    app.add_handler(CommandHandler("add", add_user))
+    app.add_handler(CommandHandler("remove", remove_user))
+    app.add_handler(CommandHandler("users", users))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
     print("✅ Бот запущен! Нажми Ctrl+C для остановки.")
     app.run_polling()
