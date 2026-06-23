@@ -83,7 +83,7 @@ async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     try:
         response = groq_client.chat.completions.create(
-            model="qwen/qwen3.6-27b",
+            model="llama-3.1-8b-instant",
             messages=[{
                 "role": "user",
                 "content": [
@@ -124,7 +124,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     try:
         response = groq_client.chat.completions.create(
-            model="qwen/qwen3.6-27b",
+            model="llama-3.1-8b-instant",
             messages=chat_histories[user_id],
             max_tokens=1024
         )
