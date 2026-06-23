@@ -1,22 +1,22 @@
 import logging
 import base64
-import httpx
-from groq import Groq
+from google import genai
+from google.genai import types
 from tavily import TavilyClient
 from telegram import Update
 from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, filters, ContextTypes
 
 TELEGRAM_TOKEN = "8891516903:AAGRLtLPWbFvPEP1Z0VDnFxK9U2xzKw6JXA"
-GROQ_API_KEY = "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"
+GEMINI_API_KEY = "AQ.Ab8RN6KQ2LJB9s4Dpx8JtyHmEpOim2D5VFnXMuxHOh2fSoiELw"
 TAVILY_API_KEY = "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"
 ADMIN_ID = 5205782372
 
-groq_client = Groq(api_key=GROQ_API_KEY)
+client = genai.Client(api_key=GEMINI_API_KEY)
 tavily_client = TavilyClient(api_key=TAVILY_API_KEY)
 
 logging.basicConfig(format="%(asctime)s - %(levelname)s - %(message)s", level=logging.INFO)
 
-chat_histories = {}
+chat_sessions = {}
 allowed_users = {ADMIN_ID}
 
 def needs_search(text):
@@ -34,13 +34,13 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if user_id not in allowed_users:
         await update.message.reply_text(f"⛔ У вас нет доступа.\n\nВаш ID: {user_id}")
         return
-    await update.message.reply_text("👋 Привет! Я ИИ-ассистент с поиском в интернете и анализом фото.\n\nПросто отправь мне фото и я его опишу!\n\n/clear — очистить историю")
+    await update.message.reply_text("👋 Привет! Я ИИ-ассистент на базе Gemini 2.0 Flash с поиском в интернете!\n\n/clear — очистить историю")
 
 async def clear(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     if user_id not in allowed_users:
         return
-    chat_histories.pop(user_id, None)
+    chat_sessions.pop(user_id, None)
     await update.message.reply_text("🗑️ История очищена!")
 
 async def add_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -71,30 +71,20 @@ async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if user_id not in allowed_users:
         await update.message.reply_text(f"⛔ У вас нет доступа.\n\nВаш ID: {user_id}")
         return
-
     await context.bot.send_chat_action(chat_id=update.effective_chat.id, action="typing")
-
     photo = update.message.photo[-1]
     file = await context.bot.get_file(photo.file_id)
     image_bytes = await file.download_as_bytearray()
-    image_base64 = base64.b64encode(image_bytes).decode("utf-8")
-
     caption = update.message.caption or "Опиши что на этом фото подробно на русском языке."
-
     try:
-        response = groq_client.chat.completions.create(
-            model="meta-llama/llama-4-scout-17b-16e-instruct",
-            messages=[{
-                "role": "user",
-                "content": [
-                    {"type": "text", "text": caption},
-                    {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{image_base64}"}}
-                ]
-            }],
-            max_tokens=1024
+        response = client.models.generate_content(
+            model="gemini-2.0-flash",
+            contents=[
+                types.Part.from_bytes(data=bytes(image_bytes), mime_type="image/jpeg"),
+                caption
+            ]
         )
-        reply = response.choices[0].message.content
-        await update.message.reply_text(reply)
+        await update.message.reply_text(response.text)
     except Exception as e:
         await update.message.reply_text(f"⚠️ Ошибка: {str(e)}")
 
@@ -106,8 +96,8 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_text = update.message.text
     await context.bot.send_chat_action(chat_id=update.effective_chat.id, action="typing")
 
-    if user_id not in chat_histories:
-        chat_histories[user_id] = [{"role": "system", "content": "Ты полезный ИИ-ассистент. Отвечай на русском языке. Никогда не используй LaTeX, формулы в скобках или символы типа $, \, ^. Пиши математику простым текстом, например: x = (11 + 15.3) / 2 = 13.15. Если тебе дают результаты поиска — используй их для актуального ответа."}]
+    if user_id not in chat_sessions:
+        chat_sessions[user_id] = client.chats.create(model="gemini-2.0-flash")
 
     search_context = ""
     if needs_search(user_text):
@@ -119,18 +109,9 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         except:
             pass
 
-    message = user_text + search_context
-    chat_histories[user_id].append({"role": "user", "content": message})
-
     try:
-        response = groq_client.chat.completions.create(
-            model="meta-llama/llama-4-scout-17b-16e-instruct",
-            messages=chat_histories[user_id],
-            max_tokens=1024
-        )
-        reply = response.choices[0].message.content
-        chat_histories[user_id].append({"role": "assistant", "content": reply})
-        await update.message.reply_text(reply)
+        response = chat_sessions[user_id].send_message(user_text + search_context)
+        await update.message.reply_text(response.text)
     except Exception as e:
         await update.message.reply_text(f"⚠️ Ошибка: {str(e)}")
 
