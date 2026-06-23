@@ -1,6 +1,6 @@
 import logging
-import json
-import os
+import base64
+import httpx
 from groq import Groq
 from tavily import TavilyClient
 from telegram import Update
@@ -32,50 +32,76 @@ def needs_search(text):
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     if user_id not in allowed_users:
-        await update.message.reply_text("⛔ У вас нет доступа к этому боту.")
+        await update.message.reply_text(f"⛔ У вас нет доступа.\n\nВаш ID: {user_id}")
         return
-    await update.message.reply_text("👋 Привет! Я ИИ-ассистент с поиском в интернете.\n\n/clear — очистить историю")
+    await update.message.reply_text("👋 Привет! Я ИИ-ассистент с поиском в интернете и анализом фото.\n\nПросто отправь мне фото и я его опишу!\n\n/clear — очистить историю")
 
 async def clear(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     if user_id not in allowed_users:
-        await update.message.reply_text("⛔ У вас нет доступа.")
         return
     chat_histories.pop(user_id, None)
     await update.message.reply_text("🗑️ История очищена!")
 
 async def add_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_user.id != ADMIN_ID:
-        await update.message.reply_text("⛔ Только администратор может добавлять пользователей.")
         return
     if not context.args:
         await update.message.reply_text("Использование: /add 123456789")
         return
-    new_id = int(context.args[0])
-    allowed_users.add(new_id)
-    await update.message.reply_text(f"✅ Пользователь {new_id} добавлен!")
+    allowed_users.add(int(context.args[0]))
+    await update.message.reply_text(f"✅ Пользователь {context.args[0]} добавлен!")
 
 async def remove_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_user.id != ADMIN_ID:
-        await update.message.reply_text("⛔ Только администратор может удалять пользователей.")
         return
     if not context.args:
         await update.message.reply_text("Использование: /remove 123456789")
         return
-    rem_id = int(context.args[0])
-    allowed_users.discard(rem_id)
-    await update.message.reply_text(f"✅ Пользователь {rem_id} удалён!")
+    allowed_users.discard(int(context.args[0]))
+    await update.message.reply_text(f"✅ Пользователь {context.args[0]} удалён!")
 
 async def users(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_user.id != ADMIN_ID:
-        await update.message.reply_text("⛔ Только администратор.")
         return
     await update.message.reply_text(f"👥 Пользователи: {allowed_users}")
+
+async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.effective_user.id
+    if user_id not in allowed_users:
+        await update.message.reply_text(f"⛔ У вас нет доступа.\n\nВаш ID: {user_id}")
+        return
+
+    await context.bot.send_chat_action(chat_id=update.effective_chat.id, action="typing")
+
+    photo = update.message.photo[-1]
+    file = await context.bot.get_file(photo.file_id)
+    image_bytes = await file.download_as_bytearray()
+    image_base64 = base64.b64encode(image_bytes).decode("utf-8")
+
+    caption = update.message.caption or "Опиши что на этом фото подробно на русском языке."
+
+    try:
+        response = groq_client.chat.completions.create(
+            model="meta-llama/llama-4-scout-17b-16e-instruct",
+            messages=[{
+                "role": "user",
+                "content": [
+                    {"type": "text", "text": caption},
+                    {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{image_base64}"}}
+                ]
+            }],
+            max_tokens=1024
+        )
+        reply = response.choices[0].message.content
+        await update.message.reply_text(reply)
+    except Exception as e:
+        await update.message.reply_text(f"⚠️ Ошибка: {str(e)}")
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     if user_id not in allowed_users:
-        await update.message.reply_text("⛔ У вас нет доступа к этому боту.")
+        await update.message.reply_text(f"⛔ У вас нет доступа.\n\nВаш ID: {user_id}")
         return
     user_text = update.message.text
     await context.bot.send_chat_action(chat_id=update.effective_chat.id, action="typing")
@@ -115,6 +141,7 @@ def main():
     app.add_handler(CommandHandler("add", add_user))
     app.add_handler(CommandHandler("remove", remove_user))
     app.add_handler(CommandHandler("users", users))
+    app.add_handler(MessageHandler(filters.PHOTO, handle_photo))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
     print("✅ Бот запущен! Нажми Ctrl+C для остановки.")
     app.run_polling()
