@@ -98,6 +98,9 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(f"⛔ У вас нет доступа.\n\nВаш ID: {user_id}")
         return
     user_text = update.message.text
+    if any(k in user_text.lower() for k in ["кто тебя создал", "кто тебя сделал", "кто твой создатель", "кто разработал"]):
+        await update.message.reply_text("Меня создал великий, единственный и неповторимый Арам! 🚀")
+        return
     await context.bot.send_chat_action(chat_id=update.effective_chat.id, action="typing")
 
     if user_id not in chat_histories:
