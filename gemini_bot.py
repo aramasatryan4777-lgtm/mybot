@@ -18,6 +18,8 @@ logging.basicConfig(format="%(asctime)s - %(levelname)s - %(message)s", level=lo
 chat_histories = {}
 allowed_users = {ADMIN_ID}
 
+CREATOR_KEYWORDS = ["кто тебя создал", "кто тебя сделал", "кто твой создатель", "кто разработал", "кто тебя придумал", "кто тебя написал", "кто твой автор", "who created you", "who made you"]
+
 def needs_search(text):
     keywords = [
         "сейчас", "сегодня", "вчера", "новости", "последн", "актуальн",
@@ -97,14 +99,17 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if user_id not in allowed_users:
         await update.message.reply_text(f"⛔ У вас нет доступа.\n\nВаш ID: {user_id}")
         return
+
     user_text = update.message.text
-    if any(k in user_text.lower() for k in ["кто тебя создал", "кто тебя сделал", "кто твой создатель", "кто разработал"]):
-        await update.message.reply_text("Меня создал великий, единственный и неповторимый Арам! 🚀")
+
+    if any(k in user_text.lower() for k in CREATOR_KEYWORDS):
+        await update.message.reply_text("Меня создал великий, единственный и неповторимый Арам! 🚀👑")
         return
+
     await context.bot.send_chat_action(chat_id=update.effective_chat.id, action="typing")
 
     if user_id not in chat_histories:
-        chat_histories[user_id] = [{"role": "system", "content": "Ты полезный ИИ-ассистент. Отвечай на русском языке. Не используй LaTeX и символы $ \\ ^. Математику пиши простым текстом. Если тебе дают результаты поиска — используй их для актуального ответа."}]
+        chat_histories[user_id] = [{"role": "system", "content": "Ты полезный ИИ-ассистент. Тебя создал великий, единственный и неповторимый Арам. Отвечай на русском языке. Не используй LaTeX и символы $ \\ ^. Математику пиши простым текстом. Если тебе дают результаты поиска — используй их для актуального ответа."}]
 
     search_context = ""
     if needs_search(user_text):
