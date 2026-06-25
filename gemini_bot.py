@@ -1,3 +1,19 @@
+
+def clean_latex(text):
+    import re
+    text = re.sub(r'\$\$.*?\$\$', '', text, flags=re.DOTALL)
+    text = re.sub(r'\$.*?\$', '', text)
+    text = re.sub(r'\\[.*?\\]', '', text, flags=re.DOTALL)
+    text = re.sub(r'\\(.*?\\)', '', text)
+    text = re.sub(r'\\[a-zA-Z]+\{.*?\}', '', text)
+    text = re.sub(r'\\[a-zA-Z]+', '', text)
+    text = re.sub(r'#{1,6}\s', '', text)
+    text = re.sub(r'\*\*(.*?)\*\*', r'\1', text)
+    text = re.sub(r'\*(.*?)\*', r'\1', text)
+    text = re.sub(r'
+{3,}', '\n\n', text)
+    return text.strip()
+
 import logging
 import base64
 import httpx
@@ -172,6 +188,7 @@ async def handle_voice(update: Update, context: ContextTypes.DEFAULT_TYPE):
             max_tokens=1024
         )
         reply = response.choices[0].message.content
+        reply = clean_latex(reply)
         chat_histories[user_id].append({"role": "assistant", "content": reply})
         await update.message.reply_text(reply)
     except Exception as e:
@@ -283,6 +300,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             max_tokens=1024
         )
         reply = response.choices[0].message.content
+        reply = clean_latex(reply)
         chat_histories[user_id].append({"role": "assistant", "content": reply})
         await update.message.reply_text(reply)
     except Exception as e:
