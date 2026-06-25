@@ -78,6 +78,40 @@ async def image(update: Update, context: ContextTypes.DEFAULT_TYPE):
     except Exception as e:
         await update.message.reply_text(f"⚠️ Ошибка: {str(e)}")
 
+async def handle_voice(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.effective_user.id
+    if user_id not in allowed_users:
+        await update.message.reply_text("⛔ У вас нет доступа.")
+        return
+    await context.bot.send_chat_action(chat_id=update.effective_chat.id, action="typing")
+    try:
+        voice = update.message.voice
+        file = await context.bot.get_file(voice.file_id)
+        voice_bytes = await file.download_as_bytearray()
+        with open("/tmp/voice.ogg", "wb") as f:
+            f.write(voice_bytes)
+        with open("/tmp/voice.ogg", "rb") as f:
+            transcription = groq_client.audio.transcriptions.create(
+                model="whisper-large-v3",
+                file=("voice.ogg", f),
+            )
+        text = transcription.text
+        await update.message.reply_text(f"🎙️ Вы сказали: {text}")
+        if user_id not in chat_histories:
+            today = datetime.now().strftime("%d %B %Y")
+            chat_histories[user_id] = [{"role": "system", "content": f"Ты полезный ИИ-ассистент. Тебя создал великий, единственный и неповторимый Арам. Сегодняшняя дата: {today}. Отвечай на русском языке."}]
+        chat_histories[user_id].append({"role": "user", "content": text})
+        response = groq_client.chat.completions.create(
+            model="meta-llama/llama-4-scout-17b-16e-instruct",
+            messages=chat_histories[user_id],
+            max_tokens=1024
+        )
+        reply = response.choices[0].message.content
+        chat_histories[user_id].append({"role": "assistant", "content": reply})
+        await update.message.reply_text(reply)
+    except Exception as e:
+        await update.message.reply_text(f"⚠️ Ошибка: {str(e)}")
+
 async def translate(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     if user_id not in allowed_users:
@@ -199,6 +233,7 @@ def main():
     app.add_handler(CommandHandler("image", image))
     app.add_handler(CommandHandler("weather", weather))
     app.add_handler(CommandHandler("translate", translate))
+    app.add_handler(MessageHandler(filters.VOICE, handle_voice))
     app.add_handler(MessageHandler(filters.PHOTO, handle_photo))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
     print("✅ Бот запущен! Нажми Ctrl+C для остановки.")
