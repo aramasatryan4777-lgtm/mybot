@@ -231,7 +231,7 @@ async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
     image_base64 = base64.b64encode(image_bytes).decode("utf-8")
     caption = update.message.caption or "Опиши что на этом фото подробно на русском языке."
     try:
-        response = groq_client.chat.completions.create(model="openai/gpt-oss-120b", messages=[{"role": "user", "content": [{"type": "text", "text": caption}, {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{image_base64}"}}]}], max_tokens=1024)
+        response = groq_client.chat.completions.create(model="meta-llama/llama-4-scout-17b-16e-instruct", messages=[{"role": "user", "content": [{"type": "text", "text": caption}, {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{image_base64}"}}]}], max_tokens=1024)
         reply = clean_text(response.choices[0].message.content)
         await update.message.reply_text(reply)
     except Exception as e:
