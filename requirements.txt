@@ -2,3 +2,4 @@ python-telegram-bot
 groq
 tavily-python
 httpx
+PyPDF2

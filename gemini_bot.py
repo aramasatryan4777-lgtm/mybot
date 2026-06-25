@@ -1,6 +1,8 @@
 import logging
 import base64
 import httpx
+import PyPDF2
+import io
 from datetime import datetime
 from groq import Groq
 from tavily import TavilyClient
@@ -75,6 +77,36 @@ async def image(update: Update, context: ContextTypes.DEFAULT_TYPE):
         async with httpx.AsyncClient(timeout=60) as http:
             response = await http.get(url)
         await update.message.reply_photo(photo=response.content, caption=f"🎨 {prompt}")
+    except Exception as e:
+        await update.message.reply_text(f"⚠️ Ошибка: {str(e)}")
+
+async def handle_document(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.effective_user.id
+    if user_id not in allowed_users:
+        await update.message.reply_text("⛔ У вас нет доступа.")
+        return
+    doc = update.message.document
+    if not doc.file_name.endswith(".pdf"):
+        await update.message.reply_text("⚠️ Пока поддерживаются только PDF файлы!")
+        return
+    await context.bot.send_chat_action(chat_id=update.effective_chat.id, action="typing")
+    try:
+        file = await context.bot.get_file(doc.file_id)
+        file_bytes = await file.download_as_bytearray()
+        pdf = PyPDF2.PdfReader(io.BytesIO(bytes(file_bytes)))
+        text = ""
+        for page in pdf.pages[:10]:
+            text += page.extract_text() or ""
+        if not text.strip():
+            await update.message.reply_text("⚠️ Не удалось извлечь текст из PDF.")
+            return
+        caption = update.message.caption or "Кратко опиши о чём этот документ на русском языке."
+        response = groq_client.chat.completions.create(
+            model="meta-llama/llama-4-scout-17b-16e-instruct",
+            messages=[{"role": "user", "content": f"{caption}\n\nТекст документа:\n{text[:3000]}"}],
+            max_tokens=1024
+        )
+        await update.message.reply_text(f"📄 {response.choices[0].message.content}")
     except Exception as e:
         await update.message.reply_text(f"⚠️ Ошибка: {str(e)}")
 
@@ -234,6 +266,7 @@ def main():
     app.add_handler(CommandHandler("weather", weather))
     app.add_handler(CommandHandler("translate", translate))
     app.add_handler(MessageHandler(filters.VOICE, handle_voice))
+    app.add_handler(MessageHandler(filters.Document.PDF, handle_document))
     app.add_handler(MessageHandler(filters.PHOTO, handle_photo))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
     print("✅ Бот запущен! Нажми Ctrl+C для остановки.")
