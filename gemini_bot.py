@@ -78,6 +78,20 @@ async def image(update: Update, context: ContextTypes.DEFAULT_TYPE):
     except Exception as e:
         await update.message.reply_text(f"⚠️ Ошибка: {str(e)}")
 
+async def weather(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.effective_user.id
+    if user_id not in allowed_users:
+        await update.message.reply_text(f"⛔ У вас нет доступа.")
+        return
+    city = " ".join(context.args) if context.args else "Moscow"
+    await context.bot.send_chat_action(chat_id=update.effective_chat.id, action="typing")
+    try:
+        async with httpx.AsyncClient() as http:
+            r = await http.get(f"https://wttr.in/{city}?format=%l:+%C+%t+%h+%w&lang=ru")
+        await update.message.reply_text(f"🌤️ Погода:\n{r.text}")
+    except Exception as e:
+        await update.message.reply_text(f"⚠️ Ошибка: {str(e)}")
+
 async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     if user_id not in allowed_users:
@@ -158,6 +172,7 @@ def main():
     app.add_handler(CommandHandler("remove", remove_user))
     app.add_handler(CommandHandler("users", users))
     app.add_handler(CommandHandler("image", image))
+    app.add_handler(CommandHandler("weather", weather))
     app.add_handler(MessageHandler(filters.PHOTO, handle_photo))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
     print("✅ Бот запущен! Нажми Ctrl+C для остановки.")
