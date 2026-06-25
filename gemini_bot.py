@@ -109,7 +109,9 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await context.bot.send_chat_action(chat_id=update.effective_chat.id, action="typing")
 
     if user_id not in chat_histories:
-        chat_histories[user_id] = [{"role": "system", "content": "Ты полезный ИИ-ассистент. Тебя создал великий, единственный и неповторимый Арам. Отвечай на русском языке. Не используй LaTeX и символы $ \\ ^. Математику пиши простым текстом. Если тебе дают результаты поиска — используй их для актуального ответа."}]
+        from datetime import datetime
+        today = datetime.now().strftime("%d %B %Y")
+        chat_histories[user_id] = [{"role": "system", "content": f"Ты полезный ИИ-ассистент. Тебя создал великий, единственный и неповторимый Арам. Сегодняшняя дата: {today}. Отвечай на русском языке. Не используй LaTeX и символы $ \\ ^. Математику пиши простым текстом. Если тебе дают результаты поиска — используй их для актуального ответа."}]
 
     search_context = ""
     try:
