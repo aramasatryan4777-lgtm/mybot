@@ -1,5 +1,6 @@
 import logging
 import base64
+import httpx
 from datetime import datetime
 from groq import Groq
 from tavily import TavilyClient
@@ -7,11 +8,11 @@ from telegram import Update
 from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, filters, ContextTypes
 
 TELEGRAM_TOKEN = "8891516903:AAEl7vZBARNRaJSaXfbfooqT17cqn2WsvEw"
-DEEPSEEK_API_KEY = "sk-a4601aaa352e460bb000e6847d2848e5"
+GROQ_API_KEY = "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"
 TAVILY_API_KEY = "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"
 ADMIN_ID = 5205782372
 
-client = Groq(api_key=DEEPSEEK_API_KEY)
+groq_client = Groq(api_key=GROQ_API_KEY)
 tavily_client = TavilyClient(api_key=TAVILY_API_KEY)
 
 logging.basicConfig(format="%(asctime)s - %(levelname)s - %(message)s", level=logging.INFO)
@@ -26,7 +27,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if user_id not in allowed_users:
         await update.message.reply_text(f"⛔ У вас нет доступа.\n\nВаш ID: {user_id}")
         return
-    await update.message.reply_text("👋 Привет! Я ИИ-ассистент с поиском в интернете!\n\n/clear — очистить историю")
+    await update.message.reply_text("👋 Привет! Я ИИ-ассистент с поиском в интернете и генерацией фото!\n\n/image описание — сгенерировать фото\n/clear — очистить историю")
 
 async def clear(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
@@ -58,6 +59,24 @@ async def users(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
     await update.message.reply_text(f"👥 Пользователи: {allowed_users}")
 
+async def image(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.effective_user.id
+    if user_id not in allowed_users:
+        await update.message.reply_text(f"⛔ У вас нет доступа.\n\nВаш ID: {user_id}")
+        return
+    if not context.args:
+        await update.message.reply_text("Использование: /image описание картинки\nНапример: /image закат на море")
+        return
+    prompt = " ".join(context.args)
+    await context.bot.send_chat_action(chat_id=update.effective_chat.id, action="upload_photo")
+    try:
+        url = f"https://image.pollinations.ai/prompt/{httpx.URL(prompt)}"
+        async with httpx.AsyncClient(timeout=60) as http:
+            response = await http.get(url)
+        await update.message.reply_photo(photo=response.content, caption=f"🎨 {prompt}")
+    except Exception as e:
+        await update.message.reply_text(f"⚠️ Ошибка: {str(e)}")
+
 async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     if user_id not in allowed_users:
@@ -70,7 +89,7 @@ async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
     image_base64 = base64.b64encode(image_bytes).decode("utf-8")
     caption = update.message.caption or "Опиши что на этом фото подробно на русском языке."
     try:
-        response = client.chat.completions.create(
+        response = groq_client.chat.completions.create(
             model="meta-llama/llama-4-scout-17b-16e-instruct",
             messages=[{
                 "role": "user",
@@ -115,7 +134,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_histories[user_id].append({"role": "user", "content": user_text + search_context})
 
     try:
-        response = client.chat.completions.create(
+        response = groq_client.chat.completions.create(
             model="meta-llama/llama-4-scout-17b-16e-instruct",
             messages=chat_histories[user_id],
             max_tokens=1024
@@ -133,6 +152,7 @@ def main():
     app.add_handler(CommandHandler("add", add_user))
     app.add_handler(CommandHandler("remove", remove_user))
     app.add_handler(CommandHandler("users", users))
+    app.add_handler(CommandHandler("image", image))
     app.add_handler(MessageHandler(filters.PHOTO, handle_photo))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
     print("✅ Бот запущен! Нажми Ctrl+C для остановки.")
