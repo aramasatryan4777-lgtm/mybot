@@ -112,14 +112,13 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         chat_histories[user_id] = [{"role": "system", "content": "Ты полезный ИИ-ассистент. Тебя создал великий, единственный и неповторимый Арам. Отвечай на русском языке. Не используй LaTeX и символы $ \\ ^. Математику пиши простым текстом. Если тебе дают результаты поиска — используй их для актуального ответа."}]
 
     search_context = ""
-    if needs_search(user_text):
-        try:
-            results = tavily_client.search(user_text, max_results=3)
-            search_context = "\n\nРезультаты поиска:\n"
-            for r in results["results"]:
-                search_context += f"- {r['title']}: {r['content'][:300]}\n"
-        except:
-            pass
+    try:
+        results = tavily_client.search(user_text, max_results=3)
+        search_context = "\n\nРезультаты поиска:\n"
+        for r in results["results"]:
+            search_context += f"- {r['title']}: {r['content'][:300]}\n"
+    except:
+        pass
 
     chat_histories[user_id].append({"role": "user", "content": user_text + search_context})
 
