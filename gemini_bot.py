@@ -1,7 +1,7 @@
 import logging
 import base64
 from datetime import datetime
-from openai import OpenAI
+from groq import Groq
 from tavily import TavilyClient
 from telegram import Update
 from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, filters, ContextTypes
@@ -11,7 +11,7 @@ DEEPSEEK_API_KEY = "sk-a4601aaa352e460bb000e6847d2848e5"
 TAVILY_API_KEY = "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"
 ADMIN_ID = 5205782372
 
-client = OpenAI(api_key=DEEPSEEK_API_KEY, base_url="https://api.deepseek.com")
+client = Groq(api_key=DEEPSEEK_API_KEY)
 tavily_client = TavilyClient(api_key=TAVILY_API_KEY)
 
 logging.basicConfig(format="%(asctime)s - %(levelname)s - %(message)s", level=logging.INFO)
@@ -71,7 +71,7 @@ async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
     caption = update.message.caption or "Опиши что на этом фото подробно на русском языке."
     try:
         response = client.chat.completions.create(
-            model="deepseek-chat",
+            model="meta-llama/llama-4-scout-17b-16e-instruct",
             messages=[{
                 "role": "user",
                 "content": [
@@ -116,7 +116,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     try:
         response = client.chat.completions.create(
-            model="deepseek-chat",
+            model="meta-llama/llama-4-scout-17b-16e-instruct",
             messages=chat_histories[user_id],
             max_tokens=1024
         )
