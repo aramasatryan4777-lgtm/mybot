@@ -1,16 +1,17 @@
 import logging
 import base64
-from groq import Groq
+from datetime import datetime
+from openai import OpenAI
 from tavily import TavilyClient
 from telegram import Update
 from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, filters, ContextTypes
 
 TELEGRAM_TOKEN = "8891516903:AAEl7vZBARNRaJSaXfbfooqT17cqn2WsvEw"
-GROQ_API_KEY = "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"
+DEEPSEEK_API_KEY = "sk-a4601aaa352e460bb000e6847d2848e5"
 TAVILY_API_KEY = "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"
 ADMIN_ID = 5205782372
 
-groq_client = Groq(api_key=GROQ_API_KEY)
+client = OpenAI(api_key=DEEPSEEK_API_KEY, base_url="https://api.deepseek.com")
 tavily_client = TavilyClient(api_key=TAVILY_API_KEY)
 
 logging.basicConfig(format="%(asctime)s - %(levelname)s - %(message)s", level=logging.INFO)
@@ -19,16 +20,6 @@ chat_histories = {}
 allowed_users = {ADMIN_ID}
 
 CREATOR_KEYWORDS = ["кто тебя создал", "кто тебя сделал", "кто твой создатель", "кто разработал", "кто тебя придумал", "кто тебя написал", "кто твой автор", "who created you", "who made you"]
-
-def needs_search(text):
-    keywords = [
-        "сейчас", "сегодня", "вчера", "новости", "последн", "актуальн",
-        "2025", "2026", "курс", "погода", "цена", "стоимость", "когда",
-        "кто выиграл", "что случилось", "евро", "доллар", "рубль", "биткоин",
-        "матч", "счёт", "результат", "вышел", "вышла", "выборы", "война",
-        "произошло", "случилось", "где", "сколько стоит"
-    ]
-    return any(k in text.lower() for k in keywords)
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
@@ -79,8 +70,8 @@ async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
     image_base64 = base64.b64encode(image_bytes).decode("utf-8")
     caption = update.message.caption or "Опиши что на этом фото подробно на русском языке."
     try:
-        response = groq_client.chat.completions.create(
-            model="meta-llama/llama-4-scout-17b-16e-instruct",
+        response = client.chat.completions.create(
+            model="deepseek-chat",
             messages=[{
                 "role": "user",
                 "content": [
@@ -109,7 +100,6 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await context.bot.send_chat_action(chat_id=update.effective_chat.id, action="typing")
 
     if user_id not in chat_histories:
-        from datetime import datetime
         today = datetime.now().strftime("%d %B %Y")
         chat_histories[user_id] = [{"role": "system", "content": f"Ты полезный ИИ-ассистент. Тебя создал великий, единственный и неповторимый Арам. Сегодняшняя дата: {today}. Отвечай на русском языке. Не используй LaTeX и символы $ \\ ^. Математику пиши простым текстом. Если тебе дают результаты поиска — используй их для актуального ответа."}]
 
@@ -125,8 +115,8 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_histories[user_id].append({"role": "user", "content": user_text + search_context})
 
     try:
-        response = groq_client.chat.completions.create(
-            model="meta-llama/llama-4-scout-17b-16e-instruct",
+        response = client.chat.completions.create(
+            model="deepseek-chat",
             messages=chat_histories[user_id],
             max_tokens=1024
         )
