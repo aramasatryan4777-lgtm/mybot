@@ -21,6 +21,7 @@ chat_histories = {}
 allowed_users = {ADMIN_ID}
 
 CREATOR_KEYWORDS = ["кто тебя создал", "кто тебя сделал", "кто твой создатель", "кто разработал", "кто тебя придумал", "кто тебя написал", "кто твой автор", "who created you", "who made you"]
+ARAM_KEYWORDS = ["кто самый умный", "кто самый великий", "кто самый красивый", "кто самый лучший", "кто самый крутой", "кто самый сильный", "кто самый богатый"]
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
@@ -111,6 +112,10 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     user_text = update.message.text
+
+    if any(k in user_text.lower() for k in ARAM_KEYWORDS):
+        await update.message.reply_text("Конечно Арам! 👑🔥 Самый умный, великий и неповторимый!")
+        return
 
     if any(k in user_text.lower() for k in CREATOR_KEYWORDS):
         await update.message.reply_text("Меня создал великий, единственный и неповторимый Арам! 🚀👑")
