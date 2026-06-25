@@ -78,6 +78,31 @@ async def image(update: Update, context: ContextTypes.DEFAULT_TYPE):
     except Exception as e:
         await update.message.reply_text(f"⚠️ Ошибка: {str(e)}")
 
+async def translate(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.effective_user.id
+    if user_id not in allowed_users:
+        await update.message.reply_text("⛔ У вас нет доступа.")
+        return
+    if not context.args:
+        await update.message.reply_text("Использование: /translate EN текст\nНапример: /translate EN Привет как дела")
+        return
+    lang = context.args[0].upper()
+    text = " ".join(context.args[1:])
+    if not text:
+        await update.message.reply_text("Укажи текст для перевода!")
+        return
+    await context.bot.send_chat_action(chat_id=update.effective_chat.id, action="typing")
+    try:
+        response = groq_client.chat.completions.create(
+            model="meta-llama/llama-4-scout-17b-16e-instruct",
+            messages=[{"role": "user", "content": f"Переведи текст на язык {lang}. Верни ТОЛЬКО перевод без пояснений: {text}"}],
+            max_tokens=1024
+        )
+        reply = response.choices[0].message.content
+        await update.message.reply_text(f"🌐 Перевод на {lang}:\n{reply}")
+    except Exception as e:
+        await update.message.reply_text(f"⚠️ Ошибка: {str(e)}")
+
 async def weather(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     if user_id not in allowed_users:
@@ -173,6 +198,7 @@ def main():
     app.add_handler(CommandHandler("users", users))
     app.add_handler(CommandHandler("image", image))
     app.add_handler(CommandHandler("weather", weather))
+    app.add_handler(CommandHandler("translate", translate))
     app.add_handler(MessageHandler(filters.PHOTO, handle_photo))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
     print("✅ Бот запущен! Нажми Ctrl+C для остановки.")
