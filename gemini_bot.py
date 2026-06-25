@@ -80,6 +80,39 @@ async def image(update: Update, context: ContextTypes.DEFAULT_TYPE):
     except Exception as e:
         await update.message.reply_text(f"⚠️ Ошибка: {str(e)}")
 
+
+async def rates(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.effective_user.id
+    if user_id not in allowed_users:
+        await update.message.reply_text("⛔ У вас нет доступа.")
+        return
+    await context.bot.send_chat_action(chat_id=update.effective_chat.id, action="typing")
+    query = " ".join(context.args).upper() if context.args else ""
+    try:
+        crypto_names = {"BTC": "bitcoin", "ETH": "ethereum", "SOL": "solana", "TON": "the-open-network", "USDT": "tether", "BNB": "binancecoin", "XRP": "ripple", "DOGE": "dogecoin"}
+        if query in crypto_names:
+            async with httpx.AsyncClient() as http:
+                r = await http.get(f"https://api.coingecko.com/api/v3/simple/price?ids={crypto_names[query]}&vs_currencies=usd,rub")
+            data = r.json()[crypto_names[query]]
+            await update.message.reply_text(f"💰 {query}:\n🇺🇸 ${data['usd']:,.2f}\n🇷🇺 {data['rub']:,.0f} ₽")
+        else:
+            base = query if query else "USD"
+            async with httpx.AsyncClient() as http:
+                r = await http.get(f"https://open.er-api.com/v6/latest/{base}")
+            data = r.json()
+            if data["result"] != "success":
+                await update.message.reply_text("⚠️ Валюта не найдена. Попробуй: USD, EUR, RUB, GBP, JPY, CNY")
+                return
+            rates_data = data["rates"]
+            popular = ["USD", "EUR", "RUB", "GBP", "CNY", "JPY", "TRY", "AED", "AMD"]
+            msg = f"💱 Курсы валют к {base}:\n"
+            for cur in popular:
+                if cur != base and cur in rates_data:
+                    msg += f"{cur}: {rates_data[cur]:.4f}\n"
+            await update.message.reply_text(msg)
+    except Exception as e:
+        await update.message.reply_text(f"⚠️ Ошибка: {str(e)}")
+
 async def handle_document(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     if user_id not in allowed_users:
@@ -267,6 +300,7 @@ def main():
     app.add_handler(CommandHandler("translate", translate))
     app.add_handler(MessageHandler(filters.VOICE, handle_voice))
     app.add_handler(MessageHandler(filters.Document.PDF, handle_document))
+    app.add_handler(CommandHandler("rates", rates))
     app.add_handler(MessageHandler(filters.PHOTO, handle_photo))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
     print("✅ Бот запущен! Нажми Ctrl+C для остановки.")
