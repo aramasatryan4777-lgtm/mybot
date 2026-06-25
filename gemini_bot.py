@@ -124,7 +124,7 @@ async def translate(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await context.bot.send_chat_action(chat_id=update.effective_chat.id, action="typing")
     try:
         response = groq_client.chat.completions.create(
-            model="meta-llama/llama-4-scout-17b-16e-instruct",
+            model="gemma2-9b-it",
             messages=[{"role": "user", "content": f"Переведи текст на язык {lang}. Верни ТОЛЬКО перевод без пояснений: {text}"}],
             max_tokens=1024
         )
@@ -185,7 +185,7 @@ async def handle_voice(update: Update, context: ContextTypes.DEFAULT_TYPE):
             today = datetime.now().strftime("%d %B %Y")
             chat_histories[user_id] = [{"role": "system", "content": f"Ты полезный ИИ-ассистент. Тебя создал великий, единственный и неповторимый Арам. Сегодняшняя дата: {today}. Отвечай на русском языке. Не используй формулы и специальные символы."}]
         chat_histories[user_id].append({"role": "user", "content": text})
-        response = groq_client.chat.completions.create(model="meta-llama/llama-4-scout-17b-16e-instruct", messages=chat_histories[user_id], max_tokens=1024)
+        response = groq_client.chat.completions.create(model="gemma2-9b-it", messages=chat_histories[user_id], max_tokens=1024)
         reply = clean_text(response.choices[0].message.content)
         chat_histories[user_id].append({"role": "assistant", "content": reply})
         await update.message.reply_text(reply)
@@ -213,7 +213,7 @@ async def handle_document(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await update.message.reply_text("Не удалось извлечь текст из PDF.")
             return
         caption = update.message.caption or "Кратко опиши о чём этот документ на русском языке."
-        response = groq_client.chat.completions.create(model="meta-llama/llama-4-scout-17b-16e-instruct", messages=[{"role": "user", "content": f"{caption}\n\nТекст документа:\n{text[:3000]}"}], max_tokens=1024)
+        response = groq_client.chat.completions.create(model="gemma2-9b-it", messages=[{"role": "user", "content": f"{caption}\n\nТекст документа:\n{text[:3000]}"}], max_tokens=1024)
         reply = clean_text(response.choices[0].message.content)
         await update.message.reply_text(f"📄 {reply}")
     except Exception as e:
@@ -231,7 +231,7 @@ async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
     image_base64 = base64.b64encode(image_bytes).decode("utf-8")
     caption = update.message.caption or "Опиши что на этом фото подробно на русском языке."
     try:
-        response = groq_client.chat.completions.create(model="meta-llama/llama-4-scout-17b-16e-instruct", messages=[{"role": "user", "content": [{"type": "text", "text": caption}, {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{image_base64}"}}]}], max_tokens=1024)
+        response = groq_client.chat.completions.create(model="gemma2-9b-it", messages=[{"role": "user", "content": [{"type": "text", "text": caption}, {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{image_base64}"}}]}], max_tokens=1024)
         reply = clean_text(response.choices[0].message.content)
         await update.message.reply_text(reply)
     except Exception as e:
@@ -263,7 +263,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         pass
     chat_histories[user_id].append({"role": "user", "content": user_text + search_context})
     try:
-        response = groq_client.chat.completions.create(model="meta-llama/llama-4-scout-17b-16e-instruct", messages=chat_histories[user_id], max_tokens=1024)
+        response = groq_client.chat.completions.create(model="gemma2-9b-it", messages=chat_histories[user_id], max_tokens=1024)
         reply = clean_text(response.choices[0].message.content)
         chat_histories[user_id].append({"role": "assistant", "content": reply})
         await update.message.reply_text(reply)
