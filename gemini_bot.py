@@ -252,7 +252,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await context.bot.send_chat_action(chat_id=update.effective_chat.id, action="typing")
     if user_id not in chat_histories:
         today = datetime.now().strftime("%d %B %Y")
-        chat_histories[user_id] = [{"role": "system", "content": f"Ты полезный ИИ-ассистент. Тебя создал великий, единственный и неповторимый Арам. Сегодняшняя дата: {today}. Отвечай на русском языке. ВАЖНО: пиши ТОЛЬКО обычным текстом. Математику пиши так: дроби - 1/5 или 3/4, корень - sqrt(233), степень - x^2, уравнения - x = (11 + sqrt(233)) / 2. НИКОГДА не используй символы $ \ { } ^ в математическом смысле."}]
+        chat_histories[user_id] = [{"role": "system", "content": f"Ты полезный ИИ-ассистент. Тебя создал великий, единственный и неповторимый Арам. Сегодняшняя дата: {today}. Отвечай на русском языке. ВАЖНО: пиши ТОЛЬКО обычным текстом. Математику пиши так: дроби - 1/5 или 3/4, корень - sqrt(233), степень - x^2, уравнения - x = (11 + sqrt(233)) / 2. НИКОГДА не используй символы доллар и обратный слеш в математическом смысле."}]
     search_context = ""
     try:
         results = tavily_client.search(user_text, max_results=3)
