@@ -164,7 +164,7 @@ async def handle_voice(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(f"🎙️ Вы сказали: {text}")
         if user_id not in chat_histories:
             today = datetime.now().strftime("%d %B %Y")
-            chat_histories[user_id] = [{"role": "system", "content": f"Ты полезный ИИ-ассистент. Тебя создал великий, единственный и неповторимый Арам. Сегодняшняя дата: {today}. Отвечай на русском языке."}]
+            chat_histories[user_id] = [{"role": "system", "content": f"Ты полезный ИИ-ассистент. Тебя создал великий, единственный и неповторимый Арам. Сегодняшняя дата: {today}. Отвечай на русском языке. НИКОГДА не используй LaTeX, символы $, \\, ^, ##, ** и любое markdown форматирование. Математику пиши ТОЛЬКО обычным текстом: дроби как 1/5, корни как sqrt(233), степени как x^2. Если тебе дают результаты поиска — используй их для актуального ответа."}]
         chat_histories[user_id].append({"role": "user", "content": text})
         response = groq_client.chat.completions.create(
             model="meta-llama/llama-4-scout-17b-16e-instruct",
@@ -263,7 +263,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if user_id not in chat_histories:
         today = datetime.now().strftime("%d %B %Y")
-        chat_histories[user_id] = [{"role": "system", "content": f"Ты полезный ИИ-ассистент. Тебя создал великий, единственный и неповторимый Арам. Сегодняшняя дата: {today}. Отвечай на русском языке. Не используй LaTeX и символы $ \\ ^. Математику пиши простым текстом. Если тебе дают результаты поиска — используй их для актуального ответа."}]
+        chat_histories[user_id] = [{"role": "system", "content": f"Ты полезный ИИ-ассистент. Тебя создал великий, единственный и неповторимый Арам. Сегодняшняя дата: {today}. Отвечай на русском языке. НИКОГДА не используй LaTeX, символы $, \\, ^, ##, ** и любое markdown форматирование. Математику пиши ТОЛЬКО обычным текстом: дроби как 1/5, корни как sqrt(233), степени как x^2. Если тебе дают результаты поиска — используй их для актуального ответа."}]
 
     search_context = ""
     try:
