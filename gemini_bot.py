@@ -21,7 +21,9 @@ tavily_client = TavilyClient(api_key=TAVILY_API_KEY)
 logging.basicConfig(format="%(asctime)s - %(levelname)s - %(message)s", level=logging.INFO)
 
 chat_histories = {}
-allowed_users = {ADMIN_ID}
+allowed_users = set()
+bot_open = True
+all_users = set()
 
 CREATOR_KEYWORDS = ["кто тебя создал", "кто тебя сделал", "кто твой создатель", "кто разработал", "кто тебя придумал", "кто тебя написал", "кто твой автор", "who created you", "who made you"]
 ARAM_KEYWORDS = ["кто самый умный", "кто самый великий", "кто самый красивый", "кто самый лучший", "кто самый крутой", "кто самый сильный", "кто самый богатый", "кто лучше всех", "кто круче всех", "кто умнее всех", "кто красивее всех", "кто лучший в мире", "кто номер один", "кто главный", "кто король"]
@@ -221,9 +223,10 @@ async def handle_document(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
-    if user_id not in allowed_users:
-        await update.message.reply_text(f"У вас нет доступа.\n\nВаш ID: {user_id}")
+    if not bot_open and user_id != ADMIN_ID:
+        await update.message.reply_text("⛔ Бот временно закрыт.")
         return
+    all_users.add(user_id)
     await context.bot.send_chat_action(chat_id=update.effective_chat.id, action="typing")
     photo = update.message.photo[-1]
     file = await context.bot.get_file(photo.file_id)
@@ -239,9 +242,10 @@ async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
-    if user_id not in allowed_users:
-        await update.message.reply_text(f"У вас нет доступа.\n\nВаш ID: {user_id}")
+    if not bot_open and user_id != ADMIN_ID:
+        await update.message.reply_text("⛔ Бот временно закрыт.")
         return
+    all_users.add(user_id)
     user_text = update.message.text
     if any(k in user_text.lower() for k in CREATOR_KEYWORDS):
         await update.message.reply_text("Меня создал великий, единственный и неповторимый Арам! 🚀👑")
@@ -272,6 +276,27 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     except Exception as e:
         await update.message.reply_text(f"Ошибка: {str(e)}")
 
+
+async def stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if update.effective_user.id != ADMIN_ID:
+        return
+    status = "открыт" if bot_open else "закрыт"
+    await update.message.reply_text(f"📊 Статистика:\n👥 Пользователей: {len(all_users)}\n🔒 Бот: {status}")
+
+async def close_bot(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    global bot_open
+    if update.effective_user.id != ADMIN_ID:
+        return
+    bot_open = False
+    await update.message.reply_text("🔒 Бот закрыт! Только ты можешь пользоваться.")
+
+async def open_bot(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    global bot_open
+    if update.effective_user.id != ADMIN_ID:
+        return
+    bot_open = True
+    await update.message.reply_text("🔓 Бот открыт для всех!")
+
 def main():
     app = ApplicationBuilder().token(TELEGRAM_TOKEN).build()
     app.add_handler(CommandHandler("start", start))
@@ -279,6 +304,9 @@ def main():
     app.add_handler(CommandHandler("add", add_user))
     app.add_handler(CommandHandler("remove", remove_user))
     app.add_handler(CommandHandler("users", users))
+    app.add_handler(CommandHandler("stats", stats))
+    app.add_handler(CommandHandler("close", close_bot))
+    app.add_handler(CommandHandler("open", open_bot))
     app.add_handler(CommandHandler("image", image))
     app.add_handler(CommandHandler("weather", weather))
     app.add_handler(CommandHandler("translate", translate))
