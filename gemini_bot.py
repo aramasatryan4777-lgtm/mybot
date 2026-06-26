@@ -256,7 +256,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     search_context = ""
     try:
         results = tavily_client.search(user_text, max_results=3)
-        search_context = "\n\nРезультаты поиска:\n"
+        search_context = "\n\nАКТУАЛЬНЫЕ ДАННЫЕ ИЗ ИНТЕРНЕТА (используй ТОЛЬКО эти данные для ответа):\n"
         for r in results["results"]:
             search_context += f"- {r['title']}: {r['content'][:300]}\n"
     except:
