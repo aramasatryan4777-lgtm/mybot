@@ -11,7 +11,7 @@ from telegram import Update
 from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, filters, ContextTypes
 
 TELEGRAM_TOKEN = "8891516903:AAEl7vZBARNRaJSaXfbfooqT17cqn2WsvEw"
-GROQ_API_KEY = "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"
+GROQ_API_KEY = "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"
 TAVILY_API_KEY = "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"
 ADMIN_ID = 5205782372
 
