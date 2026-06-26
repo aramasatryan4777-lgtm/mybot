@@ -29,17 +29,7 @@ CREATOR_KEYWORDS = ["кто тебя создал", "кто тебя сдела�
 ARAM_KEYWORDS = ["кто самый умный", "кто самый великий", "кто самый красивый", "кто самый лучший", "кто самый крутой", "кто самый сильный", "кто самый богатый", "кто лучше всех", "кто круче всех", "кто умнее всех", "кто красивее всех", "кто лучший в мире", "кто номер один", "кто главный", "кто король"]
 
 def clean_text(text):
-    text = re.sub(r'\$\$[\s\S]*?\$\$', '', text)
-    text = re.sub(r'\$[^\$]*?\$', '', text)
-    text = re.sub(r'\\\[[\s\S]*?\\\]', '', text)
-    text = re.sub(r'\\\([\s\S]*?\\\)', '', text)
-    text = re.sub(r'\\[a-zA-Z]+\{[^}]*\}', '', text)
-    text = re.sub(r'\\[a-zA-Z]+', '', text)
-    text = re.sub(r'#{1,6} ', '', text)
-    text = re.sub(r'\*\*([^*]*)\*\*', r'\1', text)
-    text = re.sub(r'\*([^*]*)\*', r'\1', text)
-    text = re.sub(r'\n{3,}', '\n\n', text)
-    return text.strip()
+    return text
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
