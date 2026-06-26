@@ -254,13 +254,15 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         today = datetime.now().strftime("%d %B %Y")
         chat_histories[user_id] = [{"role": "system", "content": f"Ты полезный ИИ-ассистент. Тебя создал великий, единственный и неповторимый Арам. Сегодняшняя дата: {today}. Отвечай на русском языке. ВАЖНО: пиши ТОЛЬКО обычным текстом. Математику пиши так: дроби - 1/5 или 3/4, корень - sqrt(233), степень - x^2, уравнения - x = (11 + sqrt(233)) / 2. НИКОГДА не используй символы доллар и обратный слеш в математическом смысле."}]
     search_context = ""
-    try:
-        results = tavily_client.search(user_text, max_results=3)
-        search_context = "\n\nАКТУАЛЬНЫЕ ДАННЫЕ ИЗ ИНТЕРНЕТА (используй ТОЛЬКО эти данные для ответа):\n"
-        for r in results["results"]:
-            search_context += f"- {r['title']}: {r['content'][:300]}\n"
-    except:
-        pass
+    search_keywords = ["курс", "погода", "новости", "цена", "сколько стоит", "доллар", "евро", "рубль", "биткоин", "сегодня", "вчера", "сейчас", "2025", "2026", "кто выиграл", "результат", "матч", "что случилось", "крипто", "акции", "нефть"]
+    if any(k in user_text.lower() for k in search_keywords):
+        try:
+            results = tavily_client.search(user_text, max_results=3)
+            search_context = "\n\nАктуальные данные из интернета:\n"
+            for r in results["results"]:
+                search_context += f"- {r['title']}: {r['content'][:300]}\n"
+        except:
+            pass
     chat_histories[user_id].append({"role": "user", "content": user_text + search_context})
     try:
         response = groq_client.chat.completions.create(model="openai/gpt-oss-120b", messages=chat_histories[user_id], max_tokens=1024)
